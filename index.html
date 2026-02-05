@@ -8,7 +8,7 @@
     body { font-family: sans-serif; background:#f6f7fb; margin:0; padding:24px; }
     .card { max-width:920px; margin:0 auto; background:#fff; border-radius:16px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,.08); }
     h1 { font-size:20px; margin:0 0 12px; }
-    .meta { display:flex; gap:10px; flex-wrap:wrap; color:#555; font-size:14px; margin-bottom:12px; }
+    .meta { display:flex; gap:10px; flex-wrap:wrap; color:#555; font-size:14px; margin-bottom:12px; align-items:center; }
     .pill { padding:4px 10px; border-radius:999px; background:#eef2ff; }
     .q { font-size:18px; margin:14px 0 10px; line-height:1.9; }
     .choices { display:grid; gap:10px; margin:12px 0; }
@@ -30,13 +30,26 @@
     button:disabled { opacity:.5; cursor:not-allowed; }
     .result { margin-top:12px; font-size:14px; color:#222; line-height:1.8; }
     .hint { margin-top:10px; font-size:14px; color:#444; background:#fff7d6; padding:10px 12px; border-radius:12px; display:none; line-height:1.9; }
+
+    /* مود سوییچ */
+    .modeBox{
+      display:flex; gap:10px; align-items:center;
+      padding:6px 10px; border-radius:999px; background:#f1f3ff;
+    }
+    .modeBox label{ cursor:pointer; display:flex; gap:6px; align-items:center; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>آزمون چهارگزینه‌ای جغرافیا (۱۰۰ سوال)</h1>
 
+    <!-- مود تمرینی/امتحانی -->
     <div class="meta">
+      <div class="modeBox" title="تمرینی: جواب همان لحظه | امتحانی: کارنامه آخر آزمون">
+        <label><input type="radio" name="mode" value="practice" checked> تمرینی</label>
+        <label><input type="radio" name="mode" value="exam"> امتحانی</label>
+      </div>
+
       <div class="pill">سوال: <span id="idx">1</span> / <span id="total">100</span></div>
       <div class="pill">درست: <span id="ok">0</span></div>
       <div class="pill">غلط: <span id="bad">0</span></div>
@@ -51,6 +64,7 @@
       <button class="secondary" id="prevBtn">قبلی</button>
       <button class="secondary" id="nextBtn">بعدی</button>
       <button class="secondary" id="shuffleBtn">ترتیب تصادفی</button>
+      <button class="secondary" id="finishBtn">پایان آزمون</button>
       <button class="danger" id="resetBtn">شروع دوباره</button>
     </div>
 
@@ -59,6 +73,16 @@
   </div>
 
 <script>
+  // ========= تنظیم مود =========
+  let MODE = "practice";
+  document.querySelectorAll('input[name="mode"]').forEach(r => {
+    r.addEventListener("change", (e) => {
+      MODE = e.target.value;
+      // در حالت امتحانی رنگ/جواب نشان داده نشود
+      render();
+    });
+  });
+
   // correct: 0..3 (گزینه درست)
   const QUESTIONS = [
     {text:"جغرافیا چیست؟", choices:["مطالعه فقط آب‌وهوا","بررسی روابط متقابل انسان و محیط و مکان‌یابی پدیده‌ها","مطالعه فقط شهرها","مطالعه فقط کوه‌ها"], correct:1},
@@ -172,14 +196,30 @@
     {text:"کدام گزینه «هر سه» را درست کنار هم دارد؟", choices:["فضا–مکان–محیط","کوه–رود–دریا","فرهنگی–قومی–تحمیلی","جهانی–بارش–خاک"], correct:0}
   ];
 
-  // نکته: برای اینکه دقیقاً ۱۰۰ سؤال باشد، همین لیست را تا ۱۰۰ نگه داشته‌ایم.
-  // (بالا دقیقاً 100 سؤال است.)
-  let order = QUESTIONS.map((_, i) => i);
+  // ======= ابزارها =======
+  const el = (id) => document.getElementById(id);
+
+  function shuffleArray(arr){
+    for(let i = arr.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // ======= وضعیت =======
+  let order = QUESTIONS.map((_, i) => i);          // ترتیب سوال‌ها (بعداً شافل می‌شود)
   let current = 0;
+
+  // selected = index اصلی گزینه (0..3)
+  // checked = آیا پاسخ ثبت شده؟
   const state = QUESTIONS.map(() => ({ selected: null, checked: false }));
+
   let ok = 0, bad = 0;
 
-  const el = (id) => document.getElementById(id);
+  // برای اینکه ترتیب گزینه‌ها در همان سوال ثابت بماند (تا با رفرش render بهم نریزد)
+  // و هر سوال یک بار هنگام نمایش اول، گزینه‌ها شافل شوند.
+  const choiceOrders = QUESTIONS.map(() => null); // آرایه‌ای از [0,1,2,3] به صورت شافل شده برای هر سوال
 
   function updateMeta(){
     el("idx").textContent = String(current + 1);
@@ -198,38 +238,56 @@
     updateMeta();
     el("questionText").textContent = q.text;
     el("result").textContent = "";
-    el("hint").style.display = "none";
-    el("hint").textContent = "";
 
     const wrap = el("choices");
     wrap.innerHTML = "";
 
-    q.choices.forEach((txt, i) => {
+    // --- ترتیب گزینه‌های همین سوال (یکبار تولید و ذخیره) ---
+    if (!choiceOrders[qi]) {
+      choiceOrders[qi] = shuffleArray([0,1,2,3]);
+    }
+    const shownOrder = choiceOrders[qi]; // مثلاً [2,0,3,1]
+
+    shownOrder.forEach((realIndex) => {
       const label = document.createElement("label");
       label.className = "choice";
 
       const radio = document.createElement("input");
       radio.type = "radio";
       radio.name = "choice";
-      radio.checked = st.selected === i;
+
+      // انتخاب ذخیره شده بر اساس ایندکس واقعی گزینه
+      radio.checked = st.selected === realIndex;
+
+      // در تمرینی، بعد از ثبت پاسخ قفل می‌شود
+      // در امتحانی، بعد از ثبت هم قفل می‌شود (برای اینکه جواب تغییر نکند)
       radio.disabled = st.checked;
-      radio.addEventListener("change", () => { st.selected = i; updateMeta(); });
+
+      radio.addEventListener("change", () => {
+        st.selected = realIndex;
+        updateMeta();
+      });
 
       const span = document.createElement("span");
-      span.textContent = txt;
+      span.textContent = q.choices[realIndex];
 
       label.appendChild(radio);
       label.appendChild(span);
 
-      if (st.checked) {
-        if (i === q.correct) label.classList.add("correct");
-        if (st.selected === i && i !== q.correct) label.classList.add("wrong");
+      // رنگ‌ها فقط در حالت تمرینی و فقط بعد از ثبت پاسخ
+      if (MODE === "practice" && st.checked) {
+        if (realIndex === q.correct) label.classList.add("correct");
+        if (st.selected === realIndex && realIndex !== q.correct) label.classList.add("wrong");
       }
+
       wrap.appendChild(label);
     });
 
     el("prevBtn").disabled = current === 0;
     el("nextBtn").disabled = current === QUESTIONS.length - 1;
+
+    // در حالت تمرینی وقتی ثبت شد، دکمه ثبت غیرفعال
+    // در امتحانی هم همین‌طور (ثبت دوباره لازم نیست)
     el("checkBtn").disabled = st.checked;
   }
 
@@ -238,44 +296,85 @@
     const q = QUESTIONS[qi];
     const st = state[qi];
 
-    if (st.selected === null) { el("result").textContent = "اول یک گزینه انتخاب کن 🙂"; return; }
+    if (st.selected === null) {
+      el("result").textContent = "اول یک گزینه انتخاب کن 🙂";
+      return;
+    }
     if (st.checked) return;
 
     st.checked = true;
-    if (st.selected === q.correct) { ok++; el("result").textContent = "✅ درست!"; }
-    else { bad++; el("result").textContent = `❌ غلط. جواب درست: گزینه ${q.correct + 1}`; }
+
+    // در حالت تمرینی: بلافاصله درست/غلط حساب و نمایش داده شود
+    // در حالت امتحانی: فقط ذخیره شود و هیچ چیزی لو نرود (اما برای کارنامه لازم است امتیاز حساب شود)
+    if (st.selected === q.correct) {
+      ok++;
+      if (MODE === "practice") el("result").textContent = "✅ درست!";
+    } else {
+      bad++;
+      if (MODE === "practice") el("result").textContent = `❌ غلط.`;
+    }
 
     render();
   }
 
-  function next(){ if(current < QUESTIONS.length-1){ current++; render(); } }
+  function next(){ if(current < QUESTIONS.length - 1){ current++; render(); } }
   function prev(){ if(current > 0){ current--; render(); } }
 
-  function shuffle(){
-    for(let i = order.length-1; i>0; i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [order[i], order[j]] = [order[j], order[i]];
-    }
+  function shuffleAll(){
+    // شافل سوال‌ها
+    order = QUESTIONS.map((_, i) => i);
+    shuffleArray(order);
+
+    // شافل گزینه‌ها برای همه سوال‌ها (ریست و تولید مجدد)
+    for (let i = 0; i < choiceOrders.length; i++) choiceOrders[i] = null;
+
     current = 0;
     render();
   }
 
   function resetAll(){
-    state.forEach(s => { s.selected=null; s.checked=false; });
-    ok=0; bad=0;
+    state.forEach(s => { s.selected = null; s.checked = false; });
+    ok = 0; bad = 0;
+
+    // بازگردانی ترتیب سوال‌ها (غیرتصادفی) + پاک کردن ترتیب گزینه‌ها
     order = QUESTIONS.map((_, i) => i);
+    for (let i = 0; i < choiceOrders.length; i++) choiceOrders[i] = null;
+
     current = 0;
     render();
   }
 
+  function finishExam(){
+    // کارنامه فقط در حالت امتحانی معنی دارد
+    if (MODE !== "exam") {
+      el("result").textContent = "برای کارنامه، حالت «امتحانی» را انتخاب کن 🙂";
+      return;
+    }
+
+    const total = QUESTIONS.length;
+    const empty = state.filter(s => s.selected === null).length;
+    const percent = Math.round((ok / total) * 100);
+
+    alert(
+      `📊 کارنامه آزمون\n\n` +
+      `تعداد سوال: ${total}\n` +
+      `درست: ${ok}\n` +
+      `غلط: ${bad}\n` +
+      `بی‌پاسخ: ${empty}\n\n` +
+      `درصد: ${percent}%`
+    );
+  }
+
+  // ======= اتصال دکمه‌ها =======
   el("checkBtn").addEventListener("click", check);
   el("nextBtn").addEventListener("click", next);
   el("prevBtn").addEventListener("click", prev);
-  el("shuffleBtn").addEventListener("click", shuffle);
+  el("shuffleBtn").addEventListener("click", shuffleAll);
   el("resetBtn").addEventListener("click", resetAll);
+  el("finishBtn").addEventListener("click", finishExam);
 
-  render();
+  // شروع با ترتیب تصادفی واقعی (سوال‌ها + گزینه‌ها)
+  shuffleAll();
 </script>
 </body>
 </html>
-
