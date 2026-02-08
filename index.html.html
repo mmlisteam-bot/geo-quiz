@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>آزمون آنلاین آیین دادرسی کیفری</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+  margin:0;padding:20px;
+  font-family:"Vazirmatn",sans-serif;
+  background:linear-gradient(135deg,#0b1020,#112b3a);
+  color:#eef2ff;
+}
+.wrap{max-width:900px;margin:auto}
+.card{
+  background:rgba(255,255,255,.1);
+  border-radius:18px;
+  padding:18px;
+  box-shadow:0 20px 50px rgba(0,0,0,.4)
+}
+h1{margin:0 0 6px}
+.sub{color:#b7c0d8;font-size:13px;margin-bottom:10px}
+.meta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.pill{
+  padding:6px 12px;border-radius:999px;
+  background:rgba(255,255,255,.15);
+  font-size:12px
+}
+.timer{font-weight:700;color:#ffd38a}
+.q{font-size:18px;line-height:2;margin:12px 0}
+.choices{display:grid;gap:10px}
+.choice{
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:14px;
+  padding:12px;
+  display:flex;gap:10px;
+  cursor:pointer;
+}
+.choice input{margin-top:4px}
+.choice.correct{background:rgba(46,204,113,.25)}
+.choice.wrong{background:rgba(231,76,60,.25)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{
+  border:none;border-radius:12px;
+  padding:10px 14px;
+  cursor:pointer;
+  background:#7aa2ff;
+  color:#000;font-family:inherit
+}
+button.secondary{background:#aaa}
+button.danger{background:#e74c3c;color:#fff}
+.result{margin-top:12px;font-size:14px}
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+<h1>آزمون آنلاین آیین دادرسی کیفری</h1>
+<div class="sub">۲۰ سؤال تستی – حالت امتحانی واقعی</div>
+
+<div class="card">
+<div class="meta">
+  <div class="pill">سؤال <span id="idx">1</span> / 20</div>
+  <div class="pill">⏱ <span class="timer" id="time">20:00</span></div>
+</div>
+
+<div class="q" id="qtext"></div>
+<div class="choices" id="choices"></div>
+
+<div class="actions">
+  <button onclick="check()">ثبت پاسخ</button>
+  <button class="secondary" onclick="prev()">قبلی</button>
+  <button class="secondary" onclick="next()">بعدی</button>
+  <button class="danger" onclick="finish()">پایان آزمون</button>
+</div>
+
+<div class="result" id="result"></div>
+
+<div id="analysis" class="hidden"></div>
+</div>
+</div>
+
+<script>
+const TIME_LIMIT=20*60;
+let timeLeft=TIME_LIMIT,timer;
+
+const Q=[
+{t:"طبق ماده ۲ قانون مجازات اسلامی (ق.م.ا)، جرم چیست؟",c:["رفتار ناپسند","رفتار زیان‌آور","هر فعل یا ترک فعلی که قانون برای آن مجازات تعیین کند","نظر دادگاه"],a:2,topic:"تعریف جرم"},
+{t:"هدف حقوق جزا چیست؟",c:["مجازات","پیشگیری از جرم","درآمد دولت","امنیت اقتصادی"],a:1,topic:"کلیات"},
+{t:"کدام مورد جزء اقسام مجازات‌ها نیست؟",c:["حد","قصاص","دیه","بازداشت موقت"],a:3,topic:"انواع مجازات"},
+{t:"حد یعنی:",c:["مجازات مالی","مجازاتی با نوع، میزان و کیفیت اجرای تعیین‌شده در شرع","مجازات عرفی","مجازات سیاسی"],a:1,topic:"حد"},
+{t:"طبق ماده ۱۲ قانون مجازات اسلامی (ق.م.ا)، قصاص چیست؟",c:["فرعی","مجازات اصلی جنایات عمدی","مالی","تعزیری"],a:1,topic:"قصاص"},
+{t:"طبق ماده ۱۷ قانون مجازات اسلامی (ق.م.ا)، دیه چیست؟",c:["حبس","مالی که به سبب جنایت مقرر می‌شود","حد","تعزیر"],a:1,topic:"دیه"},
+{t:"تعزیر یعنی:",c:["مجازات شرعی ثابت","مجازاتی که مشمول حد، قصاص و دیه نیست","فقط مالی","قصاص"],a:1,topic:"تعزیر"},
+{t:"در تعزیر، تعیین نوع و مقدار و کیفیت اجرای مجازات با چه مرجعی است؟",c:["دادستان","دادگاه","ضابط دادگستری","شاکی"],a:1,topic:"تعزیر"},
+{t:"آیین دادرسی کیفری (قانون آیین دادرسی کیفری) یعنی:",c:["قوانین مدنی","مقررات کشف جرم تا اجرای حکم و اعتراض به آرا","قوانین مالی","قوانین اداری"],a:1,topic:"آیین دادرسی"},
+{t:"تعقیب متهم بر عهده چه کسی است؟",c:["بازپرس","دادستان","ضابط دادگستری","قاضی دادگاه"],a:1,topic:"دادسرا"},
+{t:"کشف جرم بر عهده چه کسی است؟",c:["دادستان","ضابط دادگستری","بازپرس","وکیل"],a:1,topic:"ضابط"},
+{t:"تحقیقات مقدماتی بر عهده چه کسی است؟",c:["ضابط دادگستری","بازپرس","دادستان","قاضی"],a:1,topic:"تحقیقات"},
+{t:"طبق ماده ۲۸ قانون آیین دادرسی کیفری (ق.آ.د.ک)، ضابطین تحت نظارت چه کسی هستند؟",c:["بازپرس","دادستان","قاضی","شاکی"],a:1,topic:"ضابط"},
+{t:"ضابطین دادگستری حق ورود به منازل و اماکن خصوصی را دارند؟",c:["همیشه","هرگز","فقط با حکم قانون","فقط شب‌ها"],a:2,topic:"حقوق شهروندی"},
+{t:"جرم مشهود یعنی:",c:["نیازمند تحقیق","در مرئی و منظر ضابط واقع شود یا بلافاصله آثار آن دیده شود","قدیمی","سنگین"],a:1,topic:"جرم"},
+{t:"جرم غیرمشهود یعنی:",c:["آشکار","در حال وقوع","نیازمند تحقیق و بررسی برای احراز وقوع","مشاهده مستقیم"],a:2,topic:"جرم"},
+{t:"طبق ماده ۴۸ قانون آیین دادرسی کیفری (ق.آ.د.ک)، متهم چه حقی دارد؟",c:["حق سکوت","حق استفاده از وکیل","حق فرار","حق تعیین قاضی"],a:1,topic:"حقوق متهم"},
+{t:"طبق ماده ۲۵ قانون آیین دادرسی کیفری (ق.آ.د.ک)، ضابطین مکلف به رعایت چه چیزی هستند؟",c:["حقوق شهروندی","دیه","قصاص","حد"],a:0,topic:"حقوق متهم"},
+{t:"برای احضار متهم چند روز مهلت باید داده شود و موضوع اتهام اعلام گردد؟",c:["۳","۵","۷","۱۰"],a:1,topic:"احضار"},
+{t:"دادستان و معاون دادستان در کدام مرجع فعالیت می‌کنند؟",c:["دادگاه","دادسرا","پلیس","شورا"],a:1,topic:"دادسرا"}
+];
+
+
+let order=[...Q.keys()].sort(()=>Math.random()-0.5);
+let cur=0,ok=0,bad=0;
+let state=Q.map(()=>({s:null,c:false}));
+
+function startTimer(){
+timer=setInterval(()=>{
+timeLeft--;
+let m=String(Math.floor(timeLeft/60)).padStart(2,"0");
+let s=String(timeLeft%60).padStart(2,"0");
+time.textContent=`${m}:${s}`;
+if(timeLeft<=0){clearInterval(timer);finish();}
+},1000);
+}
+
+function render(){
+const qi=order[cur],q=Q[qi],st=state[qi];
+idx.textContent=cur+1;
+qtext.textContent=q.t;
+choices.innerHTML="";
+q.c.forEach((txt,i)=>{
+let d=document.createElement("label");
+d.className="choice";
+let r=document.createElement("input");
+r.type="radio";r.name="c";r.checked=st.s===i;
+r.onchange=()=>st.s=i;
+d.append(r,document.createTextNode(txt));
+if(st.c){
+if(i===q.a)d.classList.add("correct");
+if(st.s===i&&i!==q.a)d.classList.add("wrong");
+}
+choices.appendChild(d);
+});
+}
+
+function check(){
+const qi=order[cur],q=Q[qi],st=state[qi];
+if(st.s==null||st.c)return;
+st.c=true;
+st.s===q.a?ok++:bad++;
+render();
+}
+
+function next(){if(cur<Q.length-1){cur++;render()}}
+function prev(){if(cur>0){cur--;render()}}
+
+function finish(){
+clearInterval(timer);
+let topics={};
+state.forEach((s,i)=>{
+if(s.c&&s.s!==Q[i].a){
+topics[Q[i].topic]=(topics[Q[i].topic]||0)+1;
+}});
+let weak=Object.entries(topics).sort((a,b)=>b[1]-a[1])
+.map(t=>`• ${t[0]} (${t[1]} غلط)`).join("\n")||"ضعف خاصی دیده نشد";
+
+alert(`📊 کارنامه آزمون
+درست: ${ok}
+غلط: ${bad}
+درصد: ${Math.round(ok/Q.length*100)}%
+
+📉 تحلیل ضعف‌ها:
+${weak}`);
+}
+
+render();
+startTimer();
+</script>
+</body>
+</html>
