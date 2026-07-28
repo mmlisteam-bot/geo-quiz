@@ -1,46 +1,45 @@
-# Project-specific ignores
-dateland_recon_report.md
-recon-skills/
-
-# Dependencies
-node_modules/
-.venv/
-venv/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
-dist/
-build/
-target/
-.gradle/
-
-# Compiled files
-*.pyc
-*.class
-*.o
-*.exe
-*.dll
-*.so
-*.a
-*.obj
-*.out
-
-# Editor/IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# System files
-.DS_Store
-Thumbs.db
+```
+# Environment and configuration
 .env
 .env.local
 *.env.*
 
-# Logs and coverage
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.julia/
+zig*/
+target/
+.gradle/
+
+# Build artifacts
+dist/
+build/
+*.pyc
+*.class
+*.o
+*.obj
+*.out
+*.exe
+*.dll
+*.so
+*.a
+
+# Logs and temporary files
 *.log
+*.tmp
+*.swp
+*.swo
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
 coverage/
 htmlcov/
 .coverage
@@ -68,3 +67,4 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+```
